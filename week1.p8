@@ -1,7 +1,6 @@
 pico-8 cartridge // http://www.pico-8.com
 version 29
 __lua__
-music(0)
 
 Lyear, Lmonth, Lmonday = 2020, 7, 20
 year, month, day = stat(90), stat(91), stat(92)
@@ -11,6 +10,15 @@ won = 0
 bdow = 1 << (day - Lmonday)
 
 objs = {}
+
+--[[
+	floats is array of:
+	x y -- current
+	fx fy -- final x y
+	dx dy -- direction x y (added every tick)
+]]
+floats = {}
+
 hero = {
 	x = 16, y = 16, -- VISIBLE x/y
 	sprite = 55,
@@ -66,7 +74,7 @@ function draw_game()
 	-- draw hero
 	spr(hero.sprite, hero.x, hero.y)
 
-	print(tostr(not fget(mget(hero.x/8 - 1, hero.y/8),0)))
+	-- draw objs
 end
 
 function can_move(obj, dir)
@@ -106,7 +114,7 @@ function move_hero()
 			finish_today(1)
 		end
 
-		if can_move(obj, dir) then
+		if can_move(hero, dir) then
 			hero.moving = dir
 			fx = hero.x + hero.moving[1] * 8
 			fy = hero.y + hero.moving[2] * 8
