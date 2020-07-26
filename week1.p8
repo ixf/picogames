@@ -11,6 +11,7 @@ bdow = 1 << (day - Lmonday)
 objs = {}
 dbgt = {}
 past_dbgt = {}
+mq = {}
 
 --[[
  sprite flags:
@@ -184,6 +185,13 @@ function to_move(obj, dir, rec)
   return results
 end
 
+function pop(stack)
+  local v = stack[#stack]
+  stack[#stack]=nil
+  return v
+end
+
+undo_delay = 0
 function move_hero()
   if hero.moving == false then
     dir = false
@@ -195,12 +203,19 @@ function move_hero()
       dir = {0, -1}
     elseif btn(3) then
       dir = {0, 1}
-    elseif btn(4) then
+    elseif btn(4) and undo_delay <= 0 then
       past_dbgt = {}
+      undo()
+      undo_delay = 6
     end
 
-    tm = to_move(hero, dir)
-    for obj in all(tm) do
+    if undo_delay > 0 then undo_delay -= 1 end
+
+    lr = to_move(hero, dir)
+    if #lr > 0 then
+      add(mq, {lr, dir})
+    end
+    for obj in all(lr) do
       obj.moving = dir
       obj.fx = obj.x + obj.moving[1] * 8
       obj.fy = obj.y + obj.moving[2] * 8
@@ -244,6 +259,30 @@ function update_game()
   move_hero()
 end
 
+function undo()
+  if #mq == 0 then return end
+  lr = pop(mq)
+  lobjs, ldir = lr[1], lr[2]
+  for obj in all(lobjs) do
+    obj.x -= 8 * ldir[1]
+    obj.y -= 8 * ldir[2]
+  end
+end
+
+function check_if_won()
+  is_box = function(obj, xy) return obj.sprite == 40 and eq_xy(obj, xy) end
+  for btn in all(objs) do
+    if obj.sprite != 41 then 
+      ok = false
+       all(filter(objs, is_box)) do
+      end
+      if not ok then
+        return false
+      end
+    end
+  end
+  return true
+end
 
 function gmode(n)
   cls()
