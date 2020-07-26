@@ -148,7 +148,7 @@ end
 
 -- returns list of objs to move along dir
 function to_move(obj, dir, rec)
-  rec = rec or 3
+  rec = rec or 2
   if dir == false or rec == 0 then
     return {}
   end
