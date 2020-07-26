@@ -12,281 +12,274 @@ objs = {}
 dbgt = {}
 past_dbgt = {}
 
--- sprite flags:
--- 1: walls
--- 2: boxes and buttons
--- 3: collides
+--[[
+ sprite flags:
+  1: walls
+  2: boxes and buttons
+  3: collides
+  directions: 0: up , 1: right, 2: down, 3: left
 
--- directions: 0: up , 1: right, 2: down, 3: left
+ objs:
+  xy: the visible xy
+  moving: can be nil or {x,y} e.g. {1,-1}
+]]
 hero = {
-	x = 16, y = 16, -- VISIBLE x/y
-	sprite = 55,
-	moving = false, -- can be nil or {x,y} e.g. {1,-1}
-	last_dir = {1,1},
-	is_hero = true,
-	flags = fget(55)
+  x = 16, y = 16,
+  sprite = 55,
+  moving = false,
+  last_dir = {1,1},
+  is_hero = true,
+  flags = fget(55)
 }
 
 function addobj(_x, _y, _sprite, _flags)
-	add(objs, {
-		x=_x,y=_y,sprite=_sprite,
-		fx=_x,fy=_y,
-		moving=false,
-		flags=(_flags or 0)
-	})
+  add(objs, {
+    x=_x,y=_y,sprite=_sprite,
+    fx=_x,fy=_y,
+    moving=false,
+    flags=(_flags or 0)
+  })
 end
 
 function load_map()
-	for x = 0,32 do
-		for y = 0,32 do
-			sprite = mget(x,y)
-			if fget(sprite, 1) then
-				mset(x, y, 0)
-				addobj(x*8, y*8, sprite, fget(sprite))
-			end
-		end
-	end
+  for x = 0,32 do
+    for y = 0,32 do
+      sprite = mget(x,y)
+      if fget(sprite, 1) then
+        mset(x, y, 0)
+        addobj(x*8, y*8, sprite, fget(sprite))
+      end
+    end
+  end
 end
 
 
 function draw_block()
-	cls()
-	-- zablokowane
-	if won == 1 then
-		print("wygrana!")
-	elseif lf == day then
-		print("dzisiaj juz grales!")
-	else
-		print("po czasie!")
-	end
+  cls()
+  -- zablokowane
+  if won == 1 then
+    print("wygrana!")
+  elseif lf == day then
+    print("dzisiaj juz grales!")
+  else
+    print("po czasie!")
+  end
 end
 
 function draw_start()
-	cls()
-	print("dzisiaj jest: " .. ymd, 8, 8)
-	for i = 0,6 do
-		h = progress >> i & 1
-		srand(i+t()/(3+sin(i*4)*4)/1000000)
-		dx = rnd(2) -1
-		dy = rnd(2) -1
-		spr(20 + h, 24+i*10+dx, 24+dy)
-	end
-	day = 25
-	spr(22, 13 + (day-Lmonday+1)*10, 36+sin(t()/4)*3)
+  cls()
+  print("dzisiaj jest: " .. ymd, 8, 8)
+  for i = 0,6 do
+    h = progress >> i & 1
+    srand(i+t()/(3+sin(i*4)*4)/1000000)
+    dx = rnd(2) -1
+    dy = rnd(2) -1
+    spr(20 + h, 24+i*10+dx, 24+dy)
+  end
+  day = 25
+  spr(22, 13 + (day-Lmonday+1)*10, 36+sin(t()/4)*3)
 end
 
 function sprobj(obj)
-	spr(obj.sprite, obj.x, obj.y)
+  spr(obj.sprite, obj.x, obj.y)
 end
 
 function filter(objs, fn) 
-	tmp = {}
-	for t in all(objs) do
-		if fn(t) then
-			add(tmp, t)
-		end
-	end
-	return tmp
+  tmp = {}
+  for t in all(objs) do
+    if fn(t) then
+      add(tmp, t)
+    end
+  end
+  return tmp
 end
 
 function draw_game()
-	cls()
-	map(0,0,0,0, 16, 16)
+  cls()
+  map(0,0,0,0, 16, 16)
 
-	hero_sprite_vert = (hero.last_dir[2] != 1)
-	hero_sprite_horz = (hero.last_dir[1] != 1) ~= hero_sprite_vert
-	spr(hero.sprite + (hero_sprite_vert and 1 or 0), hero.x, hero.y, 1, 1, hero_sprite_horz)
-	has_flag = function(fg)
-		return function(obj)
-			return obj.flags & fg == fg
-		end
-	end
-	foreach(filter(objs, has_flag(2)), sprobj)
-	foreach(filter(objs, has_flag(4)), sprobj)
+  has_flag = function(fg)
+    return function(obj)
+      return obj.flags & fg == fg
+    end
+  end
+  foreach(filter(objs, has_flag(2)), sprobj)
+  foreach(filter(objs, has_flag(4)), sprobj)
 
-	-- for debugging
-	if #dbgt > 0 then
-		past_dbgt = dbgt
-		dbgt = {}
-	end
-	for d in all(past_dbgt) do
-		print(d)
-	end
+  hero_sprite_vert = (hero.last_dir[2] != 1)
+  hero_sprite_horz = (hero.last_dir[1] != 1) ~= hero_sprite_vert
+  spr(hero.sprite + (hero_sprite_vert and 1 or 0), hero.x, hero.y, 1, 1, hero_sprite_horz)
+
+  -- for debugging
+  if #dbgt > 0 then
+    past_dbgt = dbgt
+    dbgt = {}
+  end
+  for d in all(past_dbgt) do
+    print(d)
+  end
 end
 
 function next(obj, dir)
-	return {x = obj.x + dir[1]*8, y = obj.y + dir[2]*8}
+  return {x = obj.x + dir[1]*8, y = obj.y + dir[2]*8}
 end
 
 function eq_xy(a,b)
-	return a.x == b.x and a.y == b.y
-end
-
-function dbgtab(t, name)
-	if name then printh("> "..name) end
-	for k, v in pairs(t) do
-		printh(tostr(k).. ' '.. tostr(v))
-	end
+  return a.x == b.x and a.y == b.y
 end
 
 function will_collide(a, b, a_dir)
-	-- based only on position and dir, not flags
-	if eq_xy(next(a, a_dir), b) then
-		return true
-	end
+  -- based only on position and dir, not flags
+  if eq_xy(next(a, a_dir), b) then
+    return true
+  end
+end
+
+function dbgtab(t, name)
+  if name then printh("> "..name) end
+  for k, v in pairs(t) do
+    printh(tostr(k).. ' '.. tostr(v))
+  end
 end
 
 function dbg(msgs)
-	for a in all(msgs) do add(dbgt, a) end
+  for a in all(msgs) do add(dbgt, a) end
 end
 
-function findany(arr, func)
-	-- returns first non-false value
-	for a in all(arr) do
-		r = func(a)
-		if r then
-			return r
-		end
-	end
-	return false
-end
-
+-- returns list of objs to move along dir
 function to_move(obj, dir, rec)
-	rec = rec or 2
-	-- returns list of objs to move along dir
-	-- assuming standing still! (obj.moving == false)
-	if dir == false or rec == 0 then
-		return {}
-	end
-	
-	dx = obj.x/8 + dir[1]
-	dy = obj.y/8 + dir[2]
-	
-	if fget(mget(dx,dy), 0) then -- wall_hit?
-		return {}
-	end
+  rec = rec or 3
+  if dir == false or rec == 0 then
+    return {}
+  end
+  
+  dx = obj.x/8 + dir[1]
+  dy = obj.y/8 + dir[2]
+  
+  if fget(mget(dx,dy), 0) then -- wall_hit?
+    return {}
+  end
 
-	-- find some object we can collide with
-	box = findany(objs, function(obj2)
-		return will_collide(obj, obj2, dir) and obj2
-	end)
-	if box == false then
-		return {obj} 
-	end
+  -- find some object we can collide with
+  boxes = {}
+  for obj2 in all(objs) do
+    if (obj2.flags & 0x4 == 0x4) and will_collide(obj, obj2, dir) then
+      add(boxes, obj2)
+    end
+  end
 
-	-- both obj and box must have flag 3
-	-- TODO add on_move callback to add/remove buttons by boxes 
-	-- TODO findothers(x,y) function
-	must_collide = (obj.flags & box.flags & 0x4) == 0x4
+  -- TODO add on_move callback to add/remove buttons by boxes 
+  -- TODO findothers(x,y) function
 
-	if must_collide then
-		boxr = to_move(box, dir, rec-1)
-		if #boxr > 0 then
-			add(boxr, obj)
-			return boxr
-		end
-	else
-		return {obj}
-	end
-	return {}
+  local results = {obj}
+  for box in all(boxes) do
+    local box_mr = to_move(box, dir, rec-1)
+    if #box_mr == 0 then
+      return {} -- blocked
+    end
+    for r in all(box_mr) do
+      add(results, r)
+    end
+  end
+  return results
 end
 
 function move_hero()
-	if hero.moving == false then
-		dir = false
-		if btn(0) then
-			dir = {-1, 0}
-		elseif btn(1) then
-			dir = {1, 0}
-		elseif btn(2) then
-			dir = {0, -1}
-		elseif btn(3) then
-			dir = {0, 1}
-		elseif btn(4) then
-			past_dbgt = {}
-		end
+  if hero.moving == false then
+    dir = false
+    if btn(0) then
+      dir = {-1, 0}
+    elseif btn(1) then
+      dir = {1, 0}
+    elseif btn(2) then
+      dir = {0, -1}
+    elseif btn(3) then
+      dir = {0, 1}
+    elseif btn(4) then
+      past_dbgt = {}
+    end
 
-		tm = to_move(hero, dir)
-		for obj in all(tm) do
-			obj.moving = dir
-			obj.fx = obj.x + obj.moving[1] * 8
-			obj.fy = obj.y + obj.moving[2] * 8
+    tm = to_move(hero, dir)
+    for obj in all(tm) do
+      obj.moving = dir
+      obj.fx = obj.x + obj.moving[1] * 8
+      obj.fy = obj.y + obj.moving[2] * 8
 
-			if obj.is_hero then
-				for i = 1,2 do
-					if obj.moving[i] != 0 then
-						obj.last_dir[i] = hero.moving[i]
-					end
-				end
-			end
-		end
-	end
+      if obj.is_hero then
+        for i = 1,2 do
+          if obj.moving[i] != 0 then
+            obj.last_dir[i] = hero.moving[i]
+          end
+        end
+      end
+    end
+  end
 end
 
 function nop() end
 
 function update_start()
-	if btn(5) then
-	gmode(2)
-	end
+  if btn(5) then
+  gmode(2)
+  end
 end
 
 function move_obj(obj) 
-	if obj.moving != false then
-		obj.x += obj.moving[1]
-		obj.y += obj.moving[2]
-		if obj.x == obj.fx and obj.y == obj.fy then
-			obj.moving = false
-		end
-	end
+  if obj.moving != false then
+    obj.x += obj.moving[1]
+    obj.y += obj.moving[2]
+    if obj.x == obj.fx and obj.y == obj.fy then
+      obj.moving = false
+    end
+  end
 end
 
 function move_objs()
-	move_obj(hero)
-	foreach(objs, move_obj)
+  move_obj(hero)
+  foreach(objs, move_obj)
 end
 
 function update_game()
-	move_objs()
-	move_hero()
+  move_objs()
+  move_hero()
 end
 
 
 function gmode(n)
-	cls()
-	if n == 0 then
-		_draw, _update60 = draw_block, nop
-	elseif n == 1 then
-		_draw, _update60 = draw_start, update_start
-	elseif n == 2 then
-		_draw, _update60 = draw_game, update_game
-	end
-end	
+  cls()
+  if n == 0 then
+    _draw, _update60 = draw_block, nop
+  elseif n == 1 then
+    _draw, _update60 = draw_start, update_start
+  elseif n == 2 then
+    _draw, _update60 = draw_game, update_game
+  end
+end  
 
 function _init()
-	cartdata("ixff_t1")
-	gmode(0)
-	load_map()
-	dset(1, 10)
-	progress = dget(0)
-	lf = dget(1)
+  cartdata("ixff_t1")
+  gmode(0)
+  load_map()
+  dset(1, 10)
+  progress = dget(0)
+  lf = dget(1)
 
-	if lf == day then
-		gmode(0)
-	elseif Lyear == year and Lmonth == month
-		and Lmonday <= day and day < Lmonday + 7 then
-		gmode(1)
-	end
+  if lf == day then
+    gmode(0)
+  elseif Lyear == year and Lmonth == month
+    and Lmonday <= day and day < Lmonday + 7 then
+    gmode(1)
+  end
 end
 
 function finish_today(win)
-	if win == 1 then
-		won = 1
-		progress = progress | bdow
-	end
-	dset(1, day)
-	dset(0, progress)
-	gmode(0)
+  if win == 1 then
+    won = 1
+    progress = progress | bdow
+  end
+  dset(1, day)
+  dset(0, progress)
+  gmode(0)
 end
 
 
