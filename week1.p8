@@ -26,6 +26,7 @@ hero = {
 	sprite = 55,
 	moving = false, -- can be nil or {x,y} e.g. {1,-1}
 	last_dir = {1,1},
+	is_hero = true,
 	flags = 0,
 }
 
@@ -99,49 +100,54 @@ end
 
 function will_collide(a, b, a_dir)
 	a_next = next(a, a_dir)
-	dbgtab(a_next)
 	if eq_xy(a_next, b) then
 		return true
 	end
 end
 
-function forany(arr, func)
+function findany(arr, func)
+	-- returns first non-false value
 	for a in all(arr) do
-		if func(a) then
-			return true
+		r = func(a)
+		if r then
+			return r
 		end
 	end
 	return false
 end
 
-function can_move(obj, dir)
+function to_move(obj, dir, rec)
+	rec = rec or 2
+	-- returns list of objs to move along dir
 	-- assuming standing still! (obj.moving == false)
-	if dir == false then
-		return false
+	if dir == false or rec == 0 then
+		return {}
 	end
 	
 	dx = obj.x/8 + dir[1]
 	dy = obj.y/8 + dir[2]
 	
 	if fget(mget(dx,dy), 0) then -- wall_hit?
-		return false
+		return {}
 	end
 
-	-- obj hit?
-	return not forany(objs, function(obj2) 
-		return will_collide(obj, obj2, dir)
+	-- find some object we can collide with
+	box = findany(objs, function(obj2)
+		return will_collide(obj, obj2, dir) and obj2
 	end)
+	if box == false then
+		return {obj} 
+	end
+
+	boxr = to_move(box, dir, rec-1)
+	if #boxr > 0 then
+		add(boxr, obj)
+		return boxr
+	end
+	return {}
 end
 
 function move_hero()
-	if hero.moving != false then
-		hero.x += hero.moving[1]
-		hero.y += hero.moving[2]
-		if hero.x == fx and hero.y == fy then
-			hero.moving = false
-		end
-	end
-
 	if hero.moving == false then
 		dir = false
 		if btn(0) then
@@ -156,13 +162,16 @@ function move_hero()
 			finish_today(1)
 		end
 
-		if can_move(hero, dir) then
-			hero.moving = dir
-			fx = hero.x + hero.moving[1] * 8
-			fy = hero.y + hero.moving[2] * 8
-			for i = 1,2 do
-				if hero.moving[i] != 0 then
-					hero.last_dir[i] = hero.moving[i]
+		for obj in all(to_move(hero, dir)) do
+			obj.moving = dir
+			obj.fx = obj.x + obj.moving[1] * 8
+			obj.fy = obj.y + obj.moving[2] * 8
+
+			if obj.is_hero then
+				for i = 1,2 do
+					if obj.moving[i] != 0 then
+						obj.last_dir[i] = hero.moving[i]
+					end
 				end
 			end
 		end
@@ -177,7 +186,23 @@ function update_start()
 	end
 end
 
+function move_obj(obj) 
+	if obj.moving != false then
+		obj.x += obj.moving[1]
+		obj.y += obj.moving[2]
+		if obj.x == obj.fx and obj.y == obj.fy then
+			obj.moving = false
+		end
+	end
+end
+
+function move_objs()
+	move_obj(hero)
+	foreach(objs, move_obj)
+end
+
 function update_game()
+	move_objs()
 	move_hero()
 end
 
